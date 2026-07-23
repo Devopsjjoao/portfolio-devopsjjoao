@@ -685,27 +685,72 @@
           <form id="contactForm">
             <div class="form-group">
               <label>$ nome</label>
-              <input type="text" id="cf-name" placeholder="Seu nome" required>
+              <input type="text" id="cf-name" name="name" placeholder="Seu nome" required>
             </div>
             <div class="form-group">
               <label>$ email</label>
-              <input type="email" id="cf-email" placeholder="seu@email.com" required>
+              <input type="email" id="cf-email" name="email" placeholder="seu@email.com" required>
             </div>
             <div class="form-group">
               <label>$ mensagem</label>
-              <textarea id="cf-message" placeholder="Descreva seu projeto ou oportunidade..." required></textarea>
+              <textarea id="cf-message" name="message" placeholder="Descreva seu projeto ou oportunidade..." required></textarea>
             </div>
-            <button class="btn btn-ghost" type="submit" style="border-color:var(--accent); color:var(--accent);">➤ Enviar via WhatsApp</button>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-ghost" type="submit" id="cf-submit" style="border-color:var(--accent); color:var(--accent);">➤ Enviar mensagem</button>
+              <button class="btn btn-ghost" type="button" id="cf-whatsapp" style="font-size:12px; padding:13px 18px;">💬 ou via WhatsApp</button>
+            </div>
+            <div id="cf-status" style="font-family:var(--mono); font-size:12.5px; margin-top:14px; display:none;"></div>
           </form>
         </div>
       </div>
       <script>
-        document.getElementById('contactForm').addEventListener('submit', function(e){
+        const form = document.getElementById('contactForm');
+        const statusEl = document.getElementById('cf-status');
+        const submitBtn = document.getElementById('cf-submit');
+
+        function getValues(){
+          return {
+            name: document.getElementById('cf-name').value,
+            email: document.getElementById('cf-email').value,
+            message: document.getElementById('cf-message').value
+          };
+        }
+
+        form.addEventListener('submit', async function(e){
           e.preventDefault();
-          const name = document.getElementById('cf-name').value;
-          const email = document.getElementById('cf-email').value;
-          const message = document.getElementById('cf-message').value;
-          const text = `Olá João, meu nome é ${name} (${email}).\n\n${message}`;
+          const { name, email, message } = getValues();
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Enviando...';
+          statusEl.style.display = 'none';
+
+          try{
+            const res = await fetch('https://formspree.io/f/xrenypzl', {
+              method: 'POST',
+              headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, email, message })
+            });
+
+            if (res.ok){
+              statusEl.textContent = '✓ Mensagem enviada com sucesso! Retorno em breve.';
+              statusEl.style.color = 'var(--accent)';
+              statusEl.style.display = 'block';
+              form.reset();
+            } else {
+              throw new Error('Falha no envio');
+            }
+          } catch(err){
+            statusEl.textContent = '✗ Não foi possível enviar agora. Tente pelo WhatsApp ao lado.';
+            statusEl.style.color = 'var(--danger)';
+            statusEl.style.display = 'block';
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '➤ Enviar mensagem';
+          }
+        });
+
+        document.getElementById('cf-whatsapp').addEventListener('click', function(){
+          const { name, email, message } = getValues();
+          const text = `Olá João, meu nome é ${name || '(nome não informado)'} (${email || 'e-mail não informado'}).\n\n${message || ''}`;
           const phone = '5581999987840';
           const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
           window.open(url, '_blank');
